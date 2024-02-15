@@ -2,29 +2,35 @@
 
 namespace App\Entity;
 
-use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
+use App\Repository\UserRepository;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 class User
 {
+    #[Groups(['getClients', 'getUsers'])]
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
 
+    #[Groups(['getClients', 'getUsers'])]
     #[ORM\Column(length: 255)]
     private ?string $first_name = null;
 
+    #[Groups(['getClients', 'getUsers'])]
     #[ORM\Column(length: 255)]
     private ?string $last_name = null;
 
+    #[Groups(['getClients', 'getUsers'])]
     #[ORM\Column(length: 255)]
     private ?string $email = null;
 
-    #[ORM\ManyToOne(inversedBy: 'users')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?client $client = null;
+    #[Groups(['getUsers'])]
+    #[ORM\ManyToOne(targetEntity: Client::class, inversedBy: 'users')]
+    #[ORM\JoinColumn(name: "client_id", referencedColumnName: "id", nullable: false)]
+    private ?client $client;
 
     public function getId(): ?int
     {
@@ -67,12 +73,20 @@ class User
         return $this;
     }
 
+
+
+    /**
+     * Get the value of client
+     */
     public function getClient(): ?client
     {
         return $this->client;
     }
 
-    public function setClient(?client $client): static
+    /**
+     * Set the value of client
+     */
+    public function setClient(?client $client): self
     {
         $this->client = $client;
 
