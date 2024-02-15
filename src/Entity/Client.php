@@ -7,41 +7,51 @@ use Doctrine\ORM\Mapping as ORM;
 use App\Repository\ClientRepository;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\ArrayCollection;
+use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
 #[ORM\Entity(repositoryClass: ClientRepository::class)]
 class Client implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    #[Groups(['getClients', 'getUsers'])]
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
 
+    #[Groups(['getClients', 'getUsers'])]
     #[ORM\Column(length: 180, unique: true)]
     private ?string $email = null;
 
+    #[Groups(['getClients', 'getUsers'])]
     #[ORM\Column]
     private array $roles = [];
 
     /**
      * @var string The hashed password
      */
-    #[ORM\Column]
+    #[Groups(['getClients', 'getUsers'])]
+     #[ORM\Column]
     private ?string $password = null;
 
+    #[Groups(['getClients', 'getUsers'])]
     #[ORM\Column(length: 255)]
     private ?string $reference = null;
 
+    #[Groups(['getClients', 'getUsers'])]
     #[ORM\Column(length: 255)]
     private ?string $compagny_name = null;
 
-    #[ORM\Column(length: 255)]
+    #[Groups(['getClients', 'getUsers'])]
+    #[ORM\Column(length: 255, nullable:true)]
     private ?string $first_name = null;
 
-    #[ORM\Column(length: 255)]
+    #[Groups(['getClients', 'getUsers'])]
+    #[ORM\Column(length: 255, nullable:true)]
     private ?string $last_name = null;
 
+    #[Groups(['getClients'])]
     #[ORM\OneToMany(targetEntity: User::class, mappedBy: 'client')]
     private Collection $users;
 
@@ -50,7 +60,7 @@ class Client implements UserInterface, PasswordAuthenticatedUserInterface
         $this->users = new ArrayCollection();
         $this->reference = Uuid::v4();
     }
-    
+
     public function getId(): ?int
     {
         return $this->id;
