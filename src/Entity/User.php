@@ -5,6 +5,7 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\UserRepository;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 class User
@@ -16,14 +17,20 @@ class User
     private ?int $id = null;
 
     #[Groups(['getClients', 'getUsers'])]
-    #[ORM\Column(length: 255)]
+    #[Assert\NotBlank(message: "you should add user first_name")]
+    #[Assert\Length(min: 1, max: 30, maxMessage: "first_name must be less than {{ limit }} caracters")]
+    #[ORM\Column(length: 30)]
     private ?string $first_name = null;
 
     #[Groups(['getClients', 'getUsers'])]
-    #[ORM\Column(length: 255)]
+    #[Assert\NotBlank(message: "you should add user last_name")]
+    #[Assert\Length(min: 1, max: 30, maxMessage: "last_name must be less than {{ limit }} caracters")]
+    #[ORM\Column(length: 30)]
     private ?string $last_name = null;
 
     #[Groups(['getClients', 'getUsers'])]
+    #[Assert\NotBlank(message: "you should add user email")]
+    #[Assert\Email(message: 'The email {{ value }} is not a valid email.',)]
     #[ORM\Column(length: 255)]
     private ?string $email = null;
 

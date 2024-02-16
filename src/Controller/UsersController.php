@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -42,10 +43,18 @@ class UsersController extends AbstractController
     }
 
     #[Route('/api/users', name:"createUser", methods: ['POST'])]
-    public function createUser(Request $request, SerializerInterface $serializer, EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, ClientRepository $clientRepository): JsonResponse
+    public function createUser(Request $request, SerializerInterface $serializer, EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, ClientRepository $clientRepository, ValidatorInterface $validator): JsonResponse
     {
 
         $user = $serializer->deserialize($request->getContent(), User::class, 'json');
+
+        // On vérifie les erreurs
+        $errors = $validator->validate($user);
+
+        if ($errors->count() > 0) {
+        return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
+        }
+
         // Récupération de l'ensemble des données envoyées sous forme de tableau
         $content = $request->toArray();
 
@@ -68,14 +77,22 @@ class UsersController extends AbstractController
 
    #[Route('/api/users/{id}', name:"updateUser", methods:['PUT'])]
 
-   public function updateUser(Request $request, SerializerInterface $serializer, User $currentUser, EntityManagerInterface $em, ClientRepository $clientRepository): JsonResponse
+   public function updateUser(Request $request, SerializerInterface $serializer, User $currentUser, EntityManagerInterface $em, ClientRepository $clientRepository, ValidatorInterface $validator): JsonResponse
    {
        $updatedUser = $serializer->deserialize($request->getContent(),
                User::class,
                'json',
                [AbstractNormalizer::OBJECT_TO_POPULATE => $currentUser]);
+
+        // On vérifie les erreurs
+       $errors = $validator->validate($updatedUser);
+
+       if ($errors->count() > 0) {
+       return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
+       }
+
        $content = $request->toArray();
-       $clientId = $content['client_id'] ?? -1;
+       $clientId = $content['client_id'];
        $updatedUser->setClient($clientRepository->find($clientId));
 
        $em->persist($updatedUser);
