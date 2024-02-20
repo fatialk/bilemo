@@ -10,9 +10,10 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use App\Entity\Client;
 
+#[Route('/clients')]
 class ClientsController extends AbstractController
 {
-    #[Route('/api/clients', name: 'app_clients', methods: ['GET'])]
+    #[Route('/', name: 'app_clients', methods: ['GET'])]
     public function getClientsList(ClientRepository $clientRepository, SerializerInterface $serializer): JsonResponse
     {
         $clientsList = $clientRepository->findAll();
@@ -20,7 +21,7 @@ class ClientsController extends AbstractController
         return new JsonResponse($jsonClientsList, Response::HTTP_OK, [], true);
     }
 
-    #[Route('/api/clients/{reference}', name: 'detailClient', methods: ['GET'])]
+    #[Route('/{reference}', name: 'detailClient', methods: ['GET'])]
     public function getDetailClient(Client $client, SerializerInterface $serializer, ClientRepository $clientRepository): JsonResponse {
 
         $jsonClient = $serializer->serialize($client, 'json', ['groups' => 'getClients']);
