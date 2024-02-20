@@ -16,9 +16,10 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
+#[Route('/users')]
 class UsersController extends AbstractController
 {
-    #[Route('/api/users', name: 'app_users', methods: ['GET'])]
+    #[Route('/', name: 'app_users', methods: ['GET'])]
     public function getUsersList(UserRepository $userRepository, SerializerInterface $serializer): JsonResponse
     {
         $usersList = $userRepository->findAll();
@@ -26,23 +27,7 @@ class UsersController extends AbstractController
         return new JsonResponse($jsonUsersList, Response::HTTP_OK, [], true);
     }
 
-    #[Route('/api/users/{id}', name: 'detailUser', methods: ['GET'])]
-    public function getDetailUser(User $user, SerializerInterface $serializer, UserRepository $userRepository): JsonResponse {
-
-        $jsonUser = $serializer->serialize($user, 'json', ['groups' => 'getUsers']);
-        return new JsonResponse($jsonUser, Response::HTTP_OK, ['accept' => 'json'], true);
-   }
-
-   #[Route('/api/users/{id}', name: 'deleteUser', methods: ['DELETE'])]
-    public function deleteUser(User $user, EntityManagerInterface $em): JsonResponse
-    {
-        $em->remove($user);
-        $em->flush();
-
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-    }
-
-    #[Route('/api/users', name:"createUser", methods: ['POST'])]
+    #[Route('/', name:"createUser", methods: ['POST'])]
     public function createUser(Request $request, SerializerInterface $serializer, EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, ClientRepository $clientRepository, ValidatorInterface $validator): JsonResponse
     {
 
@@ -75,8 +60,23 @@ class UsersController extends AbstractController
         return new JsonResponse($jsonUser, Response::HTTP_CREATED, ["Location" => $location], true);
    }
 
-   #[Route('/api/users/{id}', name:"updateUser", methods:['PUT'])]
+   #[Route('/{id}', name: 'detailUser', methods: ['GET'])]
+    public function getDetailUser(User $user, SerializerInterface $serializer, UserRepository $userRepository): JsonResponse {
 
+        $jsonUser = $serializer->serialize($user, 'json', ['groups' => 'getUsers']);
+        return new JsonResponse($jsonUser, Response::HTTP_OK, ['accept' => 'json'], true);
+   }
+
+   #[Route('/{id}', name: 'deleteUser', methods: ['DELETE'])]
+    public function deleteUser(User $user, EntityManagerInterface $em): JsonResponse
+    {
+        $em->remove($user);
+        $em->flush();
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+    }
+
+   #[Route('/{id}', name:"updateUser", methods:['PUT'])]
    public function updateUser(Request $request, SerializerInterface $serializer, User $currentUser, EntityManagerInterface $em, ClientRepository $clientRepository, ValidatorInterface $validator): JsonResponse
    {
        $updatedUser = $serializer->deserialize($request->getContent(),
