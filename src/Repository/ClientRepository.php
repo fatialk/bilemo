@@ -55,13 +55,15 @@ class ClientRepository extends ServiceEntityRepository implements PasswordUpgrad
 //        ;
 //    }
 
-//    public function findOneBySomeField($value): ?Client
-//    {
-//        return $this->createQueryBuilder('c')
-//            ->andWhere('c.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+   public function findOneByReferenceWithPagination($reference, $page, $limit): ?Client
+   {
+       $users = $this->createQueryBuilder('c')
+           ->where('c.reference = :reference')
+           ->setParameter('reference', $reference)
+           ->setFirstResult(($page - 1) * $limit)
+           ->setMaxResults($limit);
+          return  $users->getQuery()
+           ->getOneOrNullResult()
+       ;
+   }
 }

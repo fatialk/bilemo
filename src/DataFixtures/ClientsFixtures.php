@@ -33,11 +33,10 @@ class ClientsFixtures extends Fixture
         for ($i = 1; $i < 11; $i++) {
             $faker = Factory::create();
             $client = new Client();
-            $client->setReference($faker->unique()->uuid());
             $client->setCompagnyName($faker->unique()->text(15));
             $client->setEmail($faker->unique()->email());
             $client->setRoles(["ROLE_USER"]);
-            $client->setPassword($this->userPasswordHasher->hashPassword($client, ($faker->unique()->password())));
+            $client->setPassword($this->userPasswordHasher->hashPassword($client, 'toto'));
 
             $manager->persist($client);
             $this->addReference('client' . $i, $client);
