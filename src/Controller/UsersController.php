@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -73,9 +74,12 @@ class UsersController extends AbstractController
    }
 
    #[Route('/{id}', name: 'deleteUser', methods: ['DELETE'])]
-    public function deleteUser(#[CurrentUser] ?Client $connectedClient, User $user, EntityManagerInterface $em): JsonResponse
+    public function deleteUser(#[CurrentUser] ?Client $connectedClient, User $user, EntityManagerInterface $em, TagAwareCacheInterface $cachePool): JsonResponse
     {
         if($connectedClient == $user->getClient()){
+        // On vide le cache.
+        $cachePool->invalidateTags(["relatedUsersCache"]);
+        
         $em->remove($user);
         $em->flush();
 
@@ -86,7 +90,7 @@ class UsersController extends AbstractController
     }
 
    #[Route('/{id}', name:"updateUser", methods:['PUT'])]
-   public function updateUser(#[CurrentUser] ?Client $connectedClient, Request $request, SerializerInterface $serializer, User $currentUser, EntityManagerInterface $em, ClientRepository $clientRepository, ValidatorInterface $validator, UrlGeneratorInterface $urlGenerator): JsonResponse
+   public function updateUser(#[CurrentUser] ?Client $connectedClient, Request $request, SerializerInterface $serializer, User $currentUser, EntityManagerInterface $em, ClientRepository $clientRepository, ValidatorInterface $validator, UrlGeneratorInterface $urlGenerator, TagAwareCacheInterface $cachePool): JsonResponse
    {
     if($connectedClient == $currentUser->getClient()){
         $updatedUser = $serializer->deserialize($request->getContent(),
@@ -101,7 +105,6 @@ class UsersController extends AbstractController
        return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
        }
 
-       $content = $request->toArray();
        $clientId = $connectedClient->getId();
        $updatedUser->setClient($clientRepository->find($clientId));
 
@@ -111,6 +114,9 @@ class UsersController extends AbstractController
        $jsonUser = $serializer->serialize($updatedUser, 'json', ['groups' => 'getUsers']);
 
        $location = $urlGenerator->generate('detailUser', ['id' => $updatedUser->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
+
+        // On vide le cache.
+        $cachePool->invalidateTags(["relatedUsersCache"]);
 
        return new JsonResponse($jsonUser, Response::HTTP_OK, ["Location" => $location], true);
     }else{
