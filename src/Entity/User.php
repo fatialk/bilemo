@@ -4,8 +4,59 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\UserRepository;
-use Symfony\Component\Serializer\Attribute\Groups;
+use JMS\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
+use Hateoas\Configuration\Annotation as Hateoas;
+/**
+ * @Hateoas\Relation(
+ *      "self",
+ *      href = @Hateoas\Route(
+ *          "user_detail",
+ *          parameters = { "id" = "expr(object.getId())" }
+ *      ),
+ *      attributes = {"verb"="GET"},
+ *      exclusion = @Hateoas\Exclusion(groups="getUsers")
+ * )
+ *
+ * @Hateoas\Relation(
+ *      "list",
+ *      href = @Hateoas\Route(
+ *          "user_list",
+ *          parameters = { "id" = "expr(object.getId())" },
+ *      ),
+ *      attributes = {"verb"="GET"},
+ *      exclusion = @Hateoas\Exclusion(groups="getUsers"),
+ * )
+ *
+ * @Hateoas\Relation(
+ *      "create",
+ *      href = @Hateoas\Route(
+ *          "user_create"
+ *      ),
+ *      attributes = {"verb"="POST"},
+ *      exclusion = @Hateoas\Exclusion(groups="getUsers")
+ * )
+ *
+ *@Hateoas\Relation(
+ *      "update",
+ *      href = @Hateoas\Route(
+ *          "user_update",
+ *          parameters = { "id" = "expr(object.getId())" },
+ *      ),
+ *      attributes = {"verb"="PUT"},
+ *      exclusion = @Hateoas\Exclusion(groups="getUsers"),
+ * )
+ *
+ * @Hateoas\Relation(
+ *      "delete",
+ *      href = @Hateoas\Route(
+ *          "user_delete",
+ *          parameters = { "id" = "expr(object.getId())" },
+ *      ),
+ *      attributes = {"verb"="DELETE"},
+ *      exclusion = @Hateoas\Exclusion(groups="getUsers"),
+ * )
+ */
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 class User
@@ -34,7 +85,7 @@ class User
     #[ORM\Column(length: 255)]
     private ?string $email = null;
 
-    #[Groups(['getUsers'])]
+
     #[ORM\ManyToOne(targetEntity: Client::class, inversedBy: 'users')]
     #[ORM\JoinColumn(name: "client_id", referencedColumnName: "id", nullable: false)]
     private ?client $client;

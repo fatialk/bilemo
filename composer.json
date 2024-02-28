@@ -28,7 +28,8 @@
         "symfony/serializer": "6.4.*",
         "symfony/uid": "6.4.*",
         "symfony/validator": "6.4.*",
-        "symfony/yaml": "6.4.*"
+        "symfony/yaml": "6.4.*",
+        "willdurand/hateoas-bundle": "^2.6"
     },
     "config": {
         "allow-plugins": {

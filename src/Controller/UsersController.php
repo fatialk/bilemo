@@ -6,34 +6,44 @@ use App\Entity\User;
 use App\Entity\Client;
 use App\Repository\UserRepository;
 use App\Repository\ClientRepository;
+use JMS\Serializer\SerializerInterface;
 use Doctrine\ORM\EntityManagerInterface;
+use JMS\Serializer\SerializationContext;
+use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
-use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
-use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 #[Route('/users')]
 class UsersController extends AbstractController
 {
-    #[Route('/', name: 'app_users', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN', message: 'You don\'t have rights to access this page')]
-    public function getUsersList(UserRepository $userRepository, SerializerInterface $serializer): JsonResponse
-    {
-        $usersList = $userRepository->findAll();
-        $jsonUsersList = $serializer->serialize($usersList, 'json', ['groups' => 'getUsers']);
-        return new JsonResponse($jsonUsersList, Response::HTTP_OK, [], true);
+    #[Route('/', name: 'user_list', methods: ['GET'])]
+    public function getList(#[CurrentUser] ?Client $connectedClient, SerializerInterface $serializer,
+    Request $request, UserRepository $userRepository, TagAwareCacheInterface $cachePool): JsonResponse {
+
+        $context = SerializationContext::create()->setGroups(['groups' => 'getUsers']);
+        $clientId = $connectedClient->getId();
+        $page = (int)$request->get('page', 1);
+        $limit = (int)$request->get('limit', 3);
+        $tag1 = "users-" . $clientId . "-" . $page . "-" . $limit;
+        $relatedUsers = $cachePool->get($tag1, function (ItemInterface $item) use ($tag1, $clientId, $userRepository, $page, $limit) {
+            $globalTag = "users-".$clientId;
+            $item->tag($tag1, $globalTag);
+            return $userRepository->findUsersByClientIdWithPagination($clientId, $page, $limit);
+        });
+        $jsonClient = $serializer->serialize($relatedUsers, 'json', $context);
+        return new JsonResponse($jsonClient, Response::HTTP_OK, ['accept' => 'json'], true);
+
     }
 
-    #[Route('/', name:"createUser", methods: ['POST'])]
-    public function createUser(#[CurrentUser] ?Client $connectedClient, Request $request, SerializerInterface $serializer, EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, ClientRepository $clientRepository, ValidatorInterface $validator): JsonResponse
+    #[Route('/', name:"user_create", methods: ['POST'])]
+    public function createUser(#[CurrentUser] ?Client $connectedClient, Request $request, SerializerInterface $serializer, EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, ClientRepository $clientRepository, ValidatorInterface $validator, TagAwareCacheInterface $cachePool): JsonResponse
     {
 
         $user = $serializer->deserialize($request->getContent(), User::class, 'json');
@@ -42,7 +52,7 @@ class UsersController extends AbstractController
         $errors = $validator->validate($user);
 
         if ($errors->count() > 0) {
-        return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
+            return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
         }
 
         // Récupération du client_id.
@@ -55,73 +65,82 @@ class UsersController extends AbstractController
         $em->persist($user);
         $em->flush();
 
-        $jsonUser = $serializer->serialize($user, 'json', ['groups' => 'getUsers']);
+         // On vide le cache.
+         $globalTag = "users-".$connectedClient->getId();
+         $cachePool->invalidateTags([$globalTag]);
 
-        $location = $urlGenerator->generate('detailUser', ['id' => $user->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
+        $context = SerializationContext::create()->setGroups(['groups' => 'getUsers']);
+        $jsonUser = $serializer->serialize($user, 'json', $context);
+
+        $location = $urlGenerator->generate('user_detail', ['id' => $user->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
 
         return new JsonResponse($jsonUser, Response::HTTP_CREATED, ["Location" => $location], true);
-   }
+    }
 
-   #[Route('/{id}', name: 'detailUser', methods: ['GET'])]
+    #[Route('/{id}', name: 'user_detail', methods: ['GET'])]
     public function getDetailUser(#[CurrentUser] ?Client $connectedClient, User $user, SerializerInterface $serializer): JsonResponse {
 
+        $context = SerializationContext::create()->setGroups(['getUsers']);
         if($connectedClient == $user->getClient()){
-        $jsonUser = $serializer->serialize($user, 'json', ['groups' => 'getUsers']);
-        return new JsonResponse($jsonUser, Response::HTTP_OK, ['accept' => 'json'], true);
+            $jsonUser = $serializer->serialize($user, 'json', $context);
+            return new JsonResponse($jsonUser, Response::HTTP_OK, ['accept' => 'json'], true);
         }else{
             return new JsonResponse('You don\'t have rights to access this page');
         }
-   }
+    }
 
-   #[Route('/{id}', name: 'deleteUser', methods: ['DELETE'])]
+    #[Route('/{id}', name: 'user_delete', methods: ['DELETE'])]
     public function deleteUser(#[CurrentUser] ?Client $connectedClient, User $user, EntityManagerInterface $em, TagAwareCacheInterface $cachePool): JsonResponse
     {
         if($connectedClient == $user->getClient()){
-        // On vide le cache.
-        $cachePool->invalidateTags(["relatedUsersCache"]);
-        
-        $em->remove($user);
-        $em->flush();
+            // On vide le cache.
+            $globalTag = "users-".$connectedClient->getId();
+            $cachePool->invalidateTags([$globalTag]);
 
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+            $em->remove($user);
+            $em->flush();
+
+            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
         }else{
             return new JsonResponse('You don\'t have rights to delete this user');
         }
     }
 
-   #[Route('/{id}', name:"updateUser", methods:['PUT'])]
-   public function updateUser(#[CurrentUser] ?Client $connectedClient, Request $request, SerializerInterface $serializer, User $currentUser, EntityManagerInterface $em, ClientRepository $clientRepository, ValidatorInterface $validator, UrlGeneratorInterface $urlGenerator, TagAwareCacheInterface $cachePool): JsonResponse
-   {
-    if($connectedClient == $currentUser->getClient()){
-        $updatedUser = $serializer->deserialize($request->getContent(),
-               User::class,
-               'json',
-               [AbstractNormalizer::OBJECT_TO_POPULATE => $currentUser]);
+    #[Route('/{id}', name:"user_update", methods:['PUT'])]
+    public function updateUser(#[CurrentUser] ?Client $connectedClient, Request $request, SerializerInterface $serializer, User $currentUser, EntityManagerInterface $em, ClientRepository $clientRepository, ValidatorInterface $validator, UrlGeneratorInterface $urlGenerator, TagAwareCacheInterface $cachePool): JsonResponse
+    {
+        if($connectedClient == $currentUser->getClient()){
+            $newUser = $serializer->deserialize($request->getContent(),
+            User::class,
+            'json');
 
-        // On vérifie les erreurs
-       $errors = $validator->validate($updatedUser);
+            $currentUser->setFirstName($newUser->getFirstName());
+            $currentUser->setLastName($newUser->getLastName());
+            $currentUser->setEmail($newUser->getEmail());
 
-       if ($errors->count() > 0) {
-       return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
-       }
 
-       $clientId = $connectedClient->getId();
-       $updatedUser->setClient($clientRepository->find($clientId));
+            // On vérifie les erreurs
+            $errors = $validator->validate($currentUser);
 
-       $em->persist($updatedUser);
-       $em->flush();
+            if ($errors->count() > 0) {
+                return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
+            }
 
-       $jsonUser = $serializer->serialize($updatedUser, 'json', ['groups' => 'getUsers']);
+            $clientId = $connectedClient->getId();
+            $currentUser->setClient($clientRepository->find($clientId));
 
-       $location = $urlGenerator->generate('detailUser', ['id' => $updatedUser->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
+            $em->persist($currentUser);
+            $em->flush();
 
-        // On vide le cache.
-        $cachePool->invalidateTags(["relatedUsersCache"]);
+             // On vide le cache.
+             $globalTag = "users-".$connectedClient->getId();
+             $cachePool->invalidateTags([$globalTag]);
 
-       return new JsonResponse($jsonUser, Response::HTTP_OK, ["Location" => $location], true);
-    }else{
-        return new JsonResponse('You don\'t have rights to update this user');
+            //    return new JsonResponse($jsonUser, Response::HTTP_OK, ["Location" => $location], true);
+            return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+        }else{
+            return new JsonResponse('You don\'t have rights to update this user');
+        }
     }
-  }
 }
 
