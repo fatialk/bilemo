@@ -14,6 +14,13 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 #[Route('/clients')]
 class ClientsController extends AbstractController
 {
+     /**
+     * Cette méthode permet de récupérer l'ensemble des clients.
+     *
+     * @param ClientRepository $clientRepository
+     * @param SerializerInterface $serializer
+     * @return JsonResponse
+     */
     #[Route('/', name: 'app_clients', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN', message: 'You don\'t have rights to access this page')]
     public function getClientsList(ClientRepository $clientRepository, SerializerInterface $serializer): JsonResponse
