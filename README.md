@@ -11,8 +11,9 @@ Seuls les clients authentifiés via JWT peuvent accéder à l'API.
 # Documentation
 L'API a été documentée avec le bundle : nelmio/api-doc-bundle. Aussi des annotations ont été ajoutées pour personnaliser la documentation et faciliter l'utilisation de l'API.
 
-   - route de la documentation: /api/doc
-   - exemple : http://bilemo/api/doc
+   - Route de la documentation : /api/doc
+   - URL: http://localhost/api/doc
+   - si besoin remplacer localhost 
 
 # Stack technique
    - Symfony 6.4
