@@ -71,7 +71,7 @@ class UsersController extends AbstractController
         $tag1 = "users-" . $clientId . "-" . $page . "-" . $limit;
         $relatedUsers = $cachePool->get($tag1, function (ItemInterface $item) use ($tag1, $clientId, $userRepository, $page, $limit) {
             $globalTag = "users-".$clientId;
-            $item->tag($tag1, $globalTag);
+            $item->tag([$tag1, $globalTag]);
             return $userRepository->findUsersByClientIdWithPagination($clientId, $page, $limit);
         });
         $jsonClient = $serializer->serialize($relatedUsers, 'json', $context);
@@ -248,7 +248,7 @@ class UsersController extends AbstractController
             $currentUser->setEmail($newUser->getEmail());
 
 
-            // On vérifie les erreurs
+             // On vérifie les erreurs
             $errors = $validator->validate($currentUser);
 
             if ($errors->count() > 0) {
