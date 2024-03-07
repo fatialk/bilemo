@@ -217,7 +217,7 @@ class UsersController extends AbstractController
      *   )
      *  )
      * @OA\Response(
-     *     response=204,
+     *     response=200,
      *     description="met à jour l'utilisateur dont l'id doit être renseigné en paramètre",
      *  )
      *
@@ -236,7 +236,7 @@ class UsersController extends AbstractController
     #[Route('/{id}', name:"user_update", methods:['PUT'])]
     public function updateUser(#[CurrentUser] ?Client $connectedClient, Request $request,
     SerializerInterface $serializer, User $currentUser, EntityManagerInterface $em,
-    ClientRepository $clientRepository, ValidatorInterface $validator, TagAwareCacheInterface $cachePool): JsonResponse
+    ClientRepository $clientRepository, ValidatorInterface $validator, UrlGeneratorInterface $urlGenerator, TagAwareCacheInterface $cachePool): JsonResponse
     {
         if($connectedClient == $currentUser->getClient()){
             $newUser = $serializer->deserialize($request->getContent(),
@@ -265,8 +265,12 @@ class UsersController extends AbstractController
              $globalTag = "users-".$connectedClient->getId();
              $cachePool->invalidateTags([$globalTag]);
 
-            //    return new JsonResponse($jsonUser, Response::HTTP_OK, ["Location" => $location], true);
-            return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
+             $context = SerializationContext::create()->setGroups(['groups' => 'getUsers']);
+             $jsonUser = $serializer->serialize($currentUser, 'json', $context);
+
+             $location = $urlGenerator->generate('user_detail', ['id' => $currentUser->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
+
+            return new JsonResponse($jsonUser, Response::HTTP_OK, ["Location" => $location], true);
         }else{
             return new JsonResponse('You don\'t have rights to update this user');
         }
